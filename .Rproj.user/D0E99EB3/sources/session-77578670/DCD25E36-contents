@@ -1,0 +1,180 @@
+################################################################################
+# update_siboif.R – Incremental download & processing of SIBOIF banking data
+# Author: <tu nombre>
+# Date  : 2025-06-11
+################################################################################
+
+# ── 1. Libraries ────────────────────────────────────────────────────────────
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(
+  httr, jsonlite, dplyr, tidyr, lubridate, slider,
+  openxlsx, readxl, purrr, stringr
+)
+
+# ── 2. Paths & global parameters ────────────────────────────────────────────
+superintendency      <- "Bancos"
+exchange_rate_path   <- "data/exchange_rate.xlsx"
+path_income_xlsx     <- "data/Estado de Resultado.xlsx"
+path_balance_xlsx    <- "data/Estado de Situación Financiera.xlsx"
+path_assets_xlsx     <- "data/Activos_promedio.xlsx"
+
+# ── 3. Helper: API fetch  (now returns empty tibble instead of error) ──────
+get_siboif_data <- function(superintendency, min_date, max_date, report_type) {
+  url <- paste0(
+    "https://www.siboif.gob.ni/rest/estadisticas",
+    "?intendencia=", superintendency,
+    "&fecha[min]=", min_date,
+    "&fecha[max]=", max_date,
+    "&tipo_reporte=", URLencode(report_type)
+  )
+  
+  resp <- GET(url)
+  if (http_status(resp)$category != "Success") {
+    stop("API error: ", http_status(resp)$message)
+  }
+  
+  parsed <- content(resp, as = "parsed", type = "application/json")
+  if (!length(parsed)) {
+    # ←── Ya no detiene el flujo; simplemente devuelve tibble vacío
+    return(tibble())
+  }
+  
+  bind_rows(lapply(parsed, as.data.frame)) |>
+    mutate(across(starts_with("valor"), ~ as.numeric(gsub(",", "", .))))
+}
+
+# ── 4. Helper: business-specific cleaning ───────────────────────────────────
+process_data <- function(df_raw, ex_rate_tbl) {
+  if (nrow(df_raw) == 0) return(tibble())   # salida rápida
+  
+  df_raw |>
+    rename(variable = variable_1) |>
+    mutate(fecha = ymd(fecha)) |>
+    
+    # Join exchange rate
+    left_join(ex_rate_tbl, by = "fecha") |>
+    mutate(
+      valor_1 = as.numeric(valor_1),
+      valor   = valor_1 / exchange_rate / 1e6,
+      orden   = as.integer(orden),
+      institucion = recode(
+        institucion,
+        "BANCO LAFISE BANCENTRO"      = "LAFISE",
+        "BANCO PRODUZCAMOS"           = "BFP",
+        "Financiera FDL, S.A."        = "FDL",
+        "FINANCIERA FAMA"             = "FAMA",
+        "FINANCIERA FINCA NICARAGUA"  = "FINCA",
+        "FINANCIERA FUNDESER"         = "FUNDESER",
+        "BANCO ATLÁNTIDA"             = "ATLÁNTIDA",
+        .default                      = institucion
+      )
+    ) |>
+    select(institucion, fecha, orden, valor) |>
+    filter(!institucion %in% c("SFB", "SFN", "SF"))
+}
+
+# ── 5. Helper: incremental updater ──────────────────────────────────────────
+update_siboif <- function(out_path, report_type, ex_rate_tbl) {
+  
+  # 5.1 Load current file if it exists
+  existing <- if (file.exists(out_path)) {
+    read_excel(out_path) |> mutate(fecha = ymd(fecha))
+  } else {
+    tibble()
+  }
+  
+  # 5.2 Determine missing date range
+  start_date <- if (nrow(existing)) max(existing$fecha, na.rm = TRUE) + days(1)
+  else ymd("2019-01-01")
+  
+  # Last day of the most recent *completed* month
+  end_date   <- floor_date(Sys.Date(), "month") - days(1)
+  
+  if (start_date > end_date) {
+    message("✔ «", report_type, "» is already up to date.")
+    return(existing)
+  }
+  
+  # 5.3 ≤2-year chunks
+  date_seq   <- seq(start_date, end_date, by = "2 years")
+  date_pairs <- Map(c, date_seq, c(date_seq[-1] - days(1), end_date))
+  
+  new_raw <- map_dfr(date_pairs, ~
+                       get_siboif_data(superintendency, .x[1], .x[2], report_type)
+  )
+  
+  if (nrow(new_raw) == 0) {
+    message("ℹ No new rows published yet for «", report_type, "».")
+    return(existing)
+  }
+  
+  # 5.4 Clean + merge + save
+  new_clean <- process_data(new_raw, ex_rate_tbl)
+  updated   <- bind_rows(existing, new_clean) |> distinct()
+  
+  write.xlsx(updated, out_path, overwrite = TRUE)
+  message("✔ Updated «", report_type, "» through ", end_date)
+  updated
+}
+
+# ── 6. Load exchange rate table ─────────────────────────────────────────────
+exchange_rate_tbl <- read_excel(exchange_rate_path) |> 
+  mutate(fecha = ymd(fecha))
+
+# ── 7. Pull & update datasets ───────────────────────────────────────────────
+income_raw <- update_siboif(
+  out_path    = path_income_xlsx,
+  report_type = "Estado de Resultados (ER)",
+  ex_rate_tbl = exchange_rate_tbl
+)
+
+balance_raw <- update_siboif(
+  out_path    = path_balance_xlsx,
+  report_type = "Estado de Situación Financiera (ESF)",
+  ex_rate_tbl = exchange_rate_tbl
+)
+
+# ── 8. Income Statement extras: delta + 12-month rolling sum ───────────────
+income_statement <- income_raw |>
+  group_by(institucion, orden) |>
+  arrange(fecha) |>
+  mutate(month = floor_date(fecha, "month")) |>
+  complete(month = seq(min(month), max(month), by = "month"),
+           fill  = list(valor = 0)) |>
+  ungroup() |>
+  mutate(
+    fecha = ceiling_date(month, "month") - days(1),
+    Month = month(fecha)
+  ) |>
+  select(-month) |>
+  group_by(institucion, orden) |>
+  arrange(fecha) |>
+  mutate(
+    delta = case_when(
+      is.na(valor) ~ 0,
+      Month == 1   ~ valor,
+      TRUE         ~ valor - lag(valor)
+    ),
+    sum12 = slide_dbl(delta, .before = 11, .complete = TRUE,
+                      .f = ~ sum(.x, na.rm = TRUE))
+  ) |>
+  ungroup() |>
+  arrange(institucion, orden, fecha)
+
+# ── 9. Balance Sheet extras: 12-month rolling mean of assets ───────────────
+assets_avg <- balance_raw |>
+  filter(orden == 10) |>
+  arrange(institucion, fecha) |>
+  group_by(institucion) |>
+  mutate(
+    mean12 = slide_dbl(valor, .before = 11, .complete = TRUE,
+                       .f = ~ mean(.x, na.rm = TRUE))
+  ) |>
+  ungroup()
+
+# ── 10. Export enriched datasets ───────────────────────────────────────────
+write.xlsx(income_statement, path_income_xlsx,   overwrite = TRUE)
+write.xlsx(balance_raw,     path_balance_xlsx,  overwrite = TRUE)
+write.xlsx(assets_avg,      path_assets_xlsx,   overwrite = TRUE)
+
+
