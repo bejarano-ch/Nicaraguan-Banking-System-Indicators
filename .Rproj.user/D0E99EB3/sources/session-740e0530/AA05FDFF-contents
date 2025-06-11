@@ -1,0 +1,168 @@
+# Cargar librerías con pacman ---------------------------------------------
+
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(httr, jsonlite, dplyr, openxlsx, lubridate, slider, readxl)
+
+
+# Función para obtener datos de la API SIBOIF -----------------------------
+obtener_datos_siboif <- function(intendencia, fecha_min, fecha_max, tipo_reporte) {
+  # Construir la URL
+  url <- paste0(
+    "https://www.siboif.gob.ni/rest/estadisticas",
+    "?intendencia=", intendencia,
+    "&fecha[min]=", fecha_min,
+    "&fecha[max]=", fecha_max,
+    "&tipo_reporte=", URLencode(tipo_reporte)
+  )
+
+  # Realizar la solicitud
+  response <- GET(url)
+
+  # Verificar el estado de la respuesta
+  if (http_status(response)$category != "Success") {
+    stop("Error en la conexión: ", http_status(response)$message)
+  }
+  
+  # Convertir la respuesta JSON a un data.frame si hay datos
+  data <- content(response, as = "parsed", type = "application/json")
+  if (length(data) == 0) stop("No se encontraron datos para los parámetros especificados.")
+  
+  data_frame <- do.call(rbind, lapply(data, as.data.frame))
+  
+  # Procesar los datos (convertir valores a numéricos si es necesario)
+  data_frame %>% 
+    mutate(across(starts_with("valor"), ~ as.numeric(gsub(",", "", .))))
+}
+
+
+# Extracción de datos bancarios -------------------------------------------
+
+intendencia <- "Bancos"
+segmentos <- list(
+  c("2019-01-01", "2020-12-31"),
+  c("2021-01-01", "2022-12-31"),
+  c("2023-01-01", "2024-12-31"),
+  c("2025-01-01", "2026-12-31")
+)
+
+# Obtener datos de Estado de Resultados
+datos_ER <- bind_rows(lapply(segmentos, function(fechas) {
+  obtener_datos_siboif(intendencia, fechas[1], fechas[2], "Estado de Resultados (ER)")
+}))
+
+# Obtener datos de Estado de Situación Financiera
+datos_ESF <- bind_rows(lapply(segmentos, function(fechas) {
+  obtener_datos_siboif(intendencia, fechas[1], fechas[2], "Estado de Situación Financiera (ESF)")
+}))
+
+# Importar tipo de cambio
+exchange_rate <- read_excel("data/exchange_rate.xlsx")
+
+
+# Transformación de los datos ---------------------------------------------
+
+# Función para procesar los datos: renombrar instituciones
+procesar_datos <- function(datos, tipo_reporte) {
+  datos |>
+    rename(variable = variable_1) |> 
+    mutate(
+      fecha = ymd(fecha)
+    ) |>
+    left_join(exchange_rate, by = "fecha") |>
+    mutate(
+      valor_1       = as.numeric(valor_1),
+      valor = valor_1 / exchange_rate / 1000000,
+      orden = as.integer(orden),
+      institucion = case_when(
+        institucion == "BANPRO" ~ "BANPRO",
+        institucion == "BANCO LAFISE BANCENTRO" ~ "LAFISE",
+        institucion == "BAC" ~ "BAC",
+        institucion == "BANCO FICOHSA" ~ "FICOHSA",
+        institucion == "BDF" ~ "BDF",
+        institucion == "AVANZ" ~ "AVANZ",
+        institucion == "BANCO PRODUZCAMOS" ~ "BFP",
+        institucion == "Financiera FDL, S.A." ~ "FDL",
+        institucion == "FINANCIERA FAMA" ~ "FAMA",
+        institucion == "FINANCIERA FINCA NICARAGUA" ~ "FINCA",
+        institucion == "FINANCIERA FUNDESER" ~ "FUNDESER",
+        institucion == "BANCO ATLÁNTIDA" ~ "ATLÁNTIDA",
+        TRUE ~ institucion
+      )
+    ) |>  
+    select(institucion, fecha, orden, valor) |> 
+    filter(!institucion %in% c("SFB", "SFN", "SF"))
+}
+
+# Procesar ambos conjuntos de datos
+datos_ER <- procesar_datos(datos_ER, tipo_reporte_ER)
+datos_ESF <- procesar_datos(datos_ESF, tipo_reporte_ESF)
+
+# Procesamiento adicional para ER (cálculos de delta y sum12)
+datos_ER <- datos_ER %>%
+  mutate(fecha = ymd(fecha)) %>%
+  group_by(institucion, orden) %>%
+  arrange(fecha) %>%
+  mutate(mes = floor_date(fecha, "month")) %>%
+  
+  # 2) Completa cada mes calendario (valor = NA donde faltaba)
+  complete(
+    mes = seq(min(mes), max(mes), by = "month"),
+    fill = list(valor = 0)
+  ) %>%
+  ungroup() %>%
+  
+  # 3) Convierte ese 'mes' en último día de mes y extrae Month
+  mutate(
+    fecha = ceiling_date(mes, "month") - days(1),
+    Month = month(fecha)
+  ) %>%
+  select(-mes) %>%
+  
+  # 4) Calcula delta
+  group_by(institucion, orden) %>%
+  arrange(fecha) %>%
+  mutate(
+    delta = case_when(
+      is.na(valor)   ~ 0,       # mes inexistente originalmente → NA
+      Month == 1     ~ valor,          # enero → valor completo
+      TRUE           ~ valor - lag(valor)  # resto → diff con mes previo
+    )
+  ) %>%
+  
+  # 5) Suma móvil de 12 meses “reales” en base a 12 filas
+  mutate(
+    sum12 = slide_dbl(
+      delta,
+      .before   = 11,        # 11 filas atrás + la actual = 12
+      .after    = 0,
+      .complete = TRUE,      # NA si alguna de esas 12 es NA
+      ~ sum(.x, na.rm = TRUE)
+    )
+  ) %>% 
+  arrange(institucion,orden,fecha) %>% 
+  ungroup() %>%
+  
+  # 6) Quedarnos con las columnas clave
+  select(institucion, orden, fecha, valor, delta, sum12)
+
+# Procesamiento adicional para ESF (cálculo de promedio de activos)
+activos <- datos_ESF %>% 
+  filter(orden == 10) %>%
+  arrange(institucion, fecha) %>% 
+  group_by(institucion) %>%
+  mutate(
+    mean12 = slide_dbl(
+      .x        = valor,
+      .before   = 11,
+      .after    = 0,
+      .complete = TRUE,
+      ~ mean(.x, na.rm = TRUE)
+    )
+  ) %>%
+  ungroup()
+
+# Exportar dataframes -----------------------------------------------------
+write.xlsx(datos_ER, "data/Estado de Resultado.xlsx", overwrite = TRUE)
+write.xlsx(datos_ESF, "data/Estado de Situación Financiera.xlsx", overwrite = TRUE)
+write.xlsx(activos, "data/Activos_promedio.xlsx", overwrite = TRUE) 
+

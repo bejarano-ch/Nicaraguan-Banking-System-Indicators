@@ -1,0 +1,107 @@
+# Load required libraries using pacman ---------------------------------------------
+
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(httr, jsonlite, dplyr, openxlsx, lubridate, slider, readxl, tidyr)
+
+# Function to fetch data from SIBOIF API -----------------------------------------
+get_siboif_data <- function(superintendency, min_date, max_date, report_type) {
+  # Build API URL
+  url <- paste0(
+    "https://www.siboif.gob.ni/rest/estadisticas",
+    "?intendencia=", superintendency,
+    "&fecha[min]=", min_date,
+    "&fecha[max]=", max_date,
+    "&tipo_reporte=", URLencode(report_type)
+  )
+
+  # Make API request
+  response <- GET(url)
+
+  # Check response status
+  if (http_status(response)$category != "Success") {
+    stop("Connection error: ", http_status(response)$message)
+  }
+  
+  # Convert JSON response to data.frame if data exists
+  data <- content(response, as = "parsed", type = "application/json")
+  if (length(data) == 0) stop("No data found for the specified parameters.")
+  
+  data_frame <- do.call(rbind, lapply(data, as.data.frame))
+  
+  # Process data (convert values to numeric if needed)
+  data_frame %>% 
+    mutate(across(starts_with("valor"), ~ as.numeric(gsub(",", "", .))))
+}
+
+
+# Extract banking data ----------------------------------------------------------
+
+superintendency <- "Bancos"
+
+date_segments <- list(
+  c("2019-01-01", "2020-12-31"),
+  c("2021-01-01", "2022-12-31"),
+  c("2023-01-01", "2024-12-31"),
+  c("2025-01-01", "2026-12-31")
+)
+
+# Get Income Statement data
+loan_portfolio <- bind_rows(lapply(date_segments, function(dates) {
+  get_siboif_data(superintendency, dates[1], dates[2], "Estratificación de la Cartera por Actividad y Monto")
+}))
+
+# Import exchange rate data
+exchange_rate <- read_excel("data/exchange_rate.xlsx")
+
+# Data transformation ----------------------------------------------------------
+
+# Function to process data: rename institutions and calculate values
+process_data <- function(data, report_type) {
+  data |>
+    rename(moneda = variable_1,
+           actividad = variable_3) |> 
+    mutate(
+      fecha = ymd(fecha)
+    ) |>
+    left_join(exchange_rate, by = "fecha") |>
+    mutate(
+      moneda = gsub("Moneda ", "", moneda),
+      valor_2 = as.numeric(valor_2),
+      valor = valor_2 / 1000,  # Convert to millions
+      valor = if_else(moneda == "Nacional", valor / exchange_rate, valor),
+      orden = as.integer(orden),
+      institucion = case_when(
+        institucion == "BANPRO" ~ "BANPRO",
+        institucion == "BANCO LAFISE BANCENTRO" ~ "LAFISE",
+        institucion == "BAC" ~ "BAC",
+        institucion == "BANCO FICOHSA" ~ "FICOHSA",
+        institucion == "BDF" ~ "BDF",
+        institucion == "AVANZ" ~ "AVANZ",
+        institucion == "BANCO PRODUZCAMOS" ~ "BFP",
+        institucion == "Financiera FDL, S.A." ~ "FDL",
+        institucion == "Financiera FDL S.A." ~ "FDL",
+        institucion == "FINANCIERA FAMA" ~ "FAMA",
+        institucion == "FINANCIERA FINCA NICARAGUA" ~ "FINCA",
+        institucion == "FINANCIERA FUNDESER" ~ "FUNDESER",
+        institucion == "BANCO ATLÁNTIDA" ~ "ATLÁNTIDA",
+        institucion == "ATLANTIDA" ~ "ATLÁNTIDA",
+        TRUE ~ institucion
+      )
+    ) |>  
+    select(institucion, fecha, moneda, actividad, valor) |>
+    filter(!institucion %in% c("SFB", "SFN", "SF", "Total SFB"))
+}
+
+# Process both datasets
+loan_portfolio_2 <- process_data(loan_portfolio, "Income Statement") %>% 
+  mutate(actividad= gsub("_", " ", actividad)) %>% 
+  mutate(agregado = case_when(
+    actividad %in% c("Vehículos", "Personales", "Tarjeta Credito") ~ "Consumo",
+    actividad %in% c("Agricola", "Ganadera") ~ "Agropecuario",
+    actividad %in% c("Hipotecaria", "Desarrollo Habitacional") ~ "Hipotecaria",
+    actividad %in% c("Sector Publico", "Comercial") ~ "Comercial",
+    .default = actividad
+  ))
+
+# Exportar dataframes -----------------------------------------------------
+write.xlsx(loan_portfolio_2, "data/Estratificación de cartera.xlsx", overwrite = TRUE)

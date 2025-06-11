@@ -1,0 +1,26 @@
+{
+    "id": "AA49F2E2",
+    "path": "C:/Users/Bejarano/OneDrive/Proyectos/Estadísticas del SBF/codes/download_data_SIBOIF_loans.R",
+    "project_path": "codes/download_data_SIBOIF_loans.R",
+    "type": "r_source",
+    "hash": "3665979546",
+    "contents": "",
+    "dirty": false,
+    "created": 1749610754844.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "91,61",
+        "scrollLine": "82"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1749657599,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1749657599690,
+    "read_only": false,
+    "read_only_alternatives": []
+}
