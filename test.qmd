@@ -1,0 +1,77 @@
+---
+title: "Nicaraguan Banking System Indicators (NBSI)"
+output:
+  html_document:
+    toc_depth: 2
+    self_contained: false
+    lib_dir: "assets"
+---
+
+## Project Overview
+
+Nicaragua is a small open economy in Central America. Its banking sector is also small and shallow, yet it ranks among the most profitable in the region. This project presents a comprehensive set of banking-system indicators built from publicly available data produced by the *Superintendencia de Bancos y Otras Instituciones Financieras* (SIBOIF).
+
+The repository includes:
+
+- Download and preprocessing script for SIBOIF banking-system data — [View code](https://github.com/bejarano-ch/Nicaraguan-Banking-System-Indicators/blob/main/codes/download_data_SIBOIF.R)
+- Download official exchange-rate data from the Central Bank of Nicaragua — [View code](https://github.com/bejarano-ch/Nicaraguan-Banking-System-Indicators/blob/main/codes/download_exchange_rate.R)
+- Create interactive Tableau dashboards:
+  - Statement of Financial Position — [View dashboard](https://public.tableau.com/app/profile/christian.bejarano5490/viz/StatementofFinancialPosition/Dashboard)
+  - Income Statement — [View dashboard](https://public.tableau.com/app/profile/christian.bejarano5490/viz/IncomeStatement_17496622854550/Dashboard1)
+
+## Main Findings: Statement of Financial Position
+
+Puedes interactuar directamente con el dashboard incrustado:
+<div class='tableauPlaceholder' id='viz1749686338394' style='position: relative'>
+  <noscript>
+    <a href='#'>
+      <img alt='Dashboard' src='https://public.tableau.com/static/images/St/StatementofFinancialPosition/Dashboard/1_rss.png' style='border: none'/>
+    </a>
+  </noscript>
+  <object class='tableauViz' style='display:none;'>
+    <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F'/>
+    <param name='embed_code_version' value='3'/>
+    <param name='site_root' value=''/>
+    <param name='name' value='StatementofFinancialPosition/Dashboard'/>
+    <param name='tabs' value='no'/>
+    <param name='toolbar' value='yes'/>
+    <param name='static_image' value='https://public.tableau.com/static/images/St/StatementofFinancialPosition/Dashboard/1.png'/>
+    <param name='animate_transition' value='yes'/>
+    <param name='display_static_image' value='yes'/>
+    <param name='display_spinner' value='yes'/>
+    <param name='display_overlay' value='yes'/>
+    <param name='display_count' value='yes'/>
+    <param name='language' value='es-ES'/>
+  </object>
+</div>
+<script type='text/javascript'>
+  var divElement = document.getElementById('viz1749686338394');
+  var vizElement = divElement.getElementsByTagName('object')[0];
+  if (divElement.offsetWidth > 800) {
+    vizElement.style.width = '1200px';
+    vizElement.style.height = '827px';
+  } else if (divElement.offsetWidth > 500) {
+    vizElement.style.width = '1200px';
+    vizElement.style.height = '827px';
+  } else {
+    vizElement.style.width = '100%';
+    vizElement.style.height = '1427px';
+  }
+  var scriptElement = document.createElement('script');
+  scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+  vizElement.parentNode.insertBefore(scriptElement, vizElement);
+</script>
+
+## Project Structure
+
+```         
+├── codes/           # R scripts for data processing and analysis │   ├── download_data_SIBOIF.R    # Script for downloading SIBOIF data │   └── download_exchange_rate.R  # Script for downloading exchange rate data ├── data/           # Raw and processed data files ├── tableau/        # Tableau workbooks and visualizations (includes ESF.pdf) └── NBSI.Rproj      # R project configuration 
+```
+
+
+
+## Contact
+
+Christian Bejarano\
+📧 [christian.bejarano.ch\@gmail.com](mailto:christian.bejarano.ch@gmail.com)\
+🔗 [GitHub Repository](https://github.com/bejarano-ch/Nicaraguan-Banking-System-Indicators)
