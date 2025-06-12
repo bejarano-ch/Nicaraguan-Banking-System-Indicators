@@ -1,63 +1,52 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Bulk PDF-to-PNG Converter
-# Converts every page of every PDF in a directory to PNG without losing resolution
-# Dependencies: pdftools (Poppler backend)   ──────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────
+# Batch PDF ➜ SVG (vectorial) vía Inkscape CLI
+# ─────────────────────────────────────────────────────────────────────
 
-# 1) Load (or install on-the-fly) required package ----------------------------
-if (!requireNamespace("pdftools", quietly = TRUE)) {
-  install.packages("pdftools")
-}
-library(pdftools)  # provides pdf_convert()
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(fs, purrr, glue)
 
-# 2) User-defined parameters --------------------------------------------------
-input_dir  <- "tableau"   # 📂 Folder containing PDFs
-output_dir <- input_dir # 📂 Where PNGs will be written
-dpi        <- 600                         # 🖨  Typical print-quality resolution
-overwrite  <- TRUE                       # 🔄 Skip already-converted pages?
+# Parámetros
+input_dir  <- "tableau"                          
+output_dir <- fs::path(input_dir)        
+fs::dir_create(output_dir)                      
 
-# 3) Create output directory if it does not exist ----------------------------
-if (!dir.exists(output_dir)) dir.create(output_dir)
+# Verifica Inkscape
+ink_path <- Sys.which("inkscape")
+if (ink_path == "") stop("❌ No encontré Inkscape en tu PATH")
 
-# 4) Helper: convert one PDF --------------------------------------------------
-convert_pdf <- function(pdf_file, dpi, output_dir, overwrite = FALSE) {
-  # Build output file pattern: <basename>_page%02d.png
-  base <- tools::file_path_sans_ext(basename(pdf_file))
-  out_pattern <- file.path(output_dir, paste0(base, "_page%02d.png"))
+# Función de conversión
+convert_pdf_to_svg <- function(pdf_path) {
+  base    <- fs::path_ext_remove(fs::path_file(pdf_path))
+  out_svg <- fs::path(output_dir, paste0(base, ".svg"))
   
-  # Skip if files already exist and overwrite == FALSE
-  if (!overwrite) {
-    first_target <- sprintf(out_pattern, 1L)
-    if (file.exists(first_target)) {
-      message(sprintf("Skipping %s (already converted).", base))
-      return(invisible(NULL))
-    }
+  # 1) Intento con sintaxis moderna
+  args1 <- c(
+    pdf_path,
+    "--export-type=svg",
+    glue("--export-filename={out_svg}")
+  )
+  suppressWarnings(system2(ink_path, args1, stdout = FALSE, stderr = FALSE))
+  if (fs::file_exists(out_svg) && fs::file_info(out_svg)$size > 0) {
+    message(glue("✔ '{base}.pdf' ➜ '{base}.svg' (export-type)"))
+    return()
   }
   
-  # pdf_convert renders & writes images; returns vector of written file names
-  png_files <- pdf_convert(
-    pdf      = pdf_file,
-    format   = "png",
-    dpi      = dpi,
-    filenames = sprintf(out_pattern, seq_len(pdf_info(pdf_file)$pages))
+  # 2) Intento con sintaxis legacy
+  args2 <- c(
+    pdf_path,
+    glue("--export-plain-svg={out_svg}")
   )
-  message(sprintf("✔ %s ➜ %d page(s) converted", basename(pdf_file), length(png_files)))
+  suppressWarnings(system2(ink_path, args2, stdout = FALSE, stderr = FALSE))
+  if (fs::file_exists(out_svg) && fs::file_info(out_svg)$size > 0) {
+    message(glue("✔ '{base}.pdf' ➜ '{base}.svg' (export-plain-svg)"))
+  } else {
+    warning(glue("⚠️ Falló la conversión de '{base}.pdf' a SVG"))
+  }
 }
 
-# 5) Batch process all PDFs ---------------------------------------------------
-pdf_files <- list.files(input_dir, pattern = "\\.pdf$", full.names = TRUE, ignore.case = TRUE)
+# Ejecuta sobre todos los PDFs de la carpeta
+pdf_files <- fs::dir_ls(input_dir, regexp = "\\.pdf$", recurse = FALSE)
+if (length(pdf_files) == 0) stop("No hay archivos PDF en ", input_dir)
 
-if (length(pdf_files) == 0) {
-  stop("No PDF files found in the specified directory.")
-}
+purrr::walk(pdf_files, convert_pdf_to_svg)
 
-invisible(lapply(pdf_files, convert_pdf, dpi = dpi, output_dir = output_dir, overwrite = overwrite))
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Usage notes:
-# • Set `dpi` ≥ 300 for on-screen quality, 600+ for print-ready clarity.
-# • Files are named <pdfname>_page01.png, <pdfname>_page02.png, …
-# • Each page becomes an independent PNG, preserving original dimensions
-#   (scaled by the selected DPI).
-# • Poppler must be available; on Windows, pdftools ships pre-compiled binaries.
-# ─────────────────────────────────────────────────────────────────────────────

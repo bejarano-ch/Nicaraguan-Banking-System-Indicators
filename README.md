@@ -23,6 +23,24 @@ The repository includes:
 └── NBSI.Rproj      # R project configuration
 ```
 
+## Key Insights:
+
+- El sistema bancario nicaragüense administra un total de 9,803.7 millones de dólares en activos al mes de abril 2025
+- Es un sistema tradicional, donde la cartera bruta de créditos constituye el principal activo
+- La cartera bruta de créditos totaliza 5,973.1 millones de dólares
+- Los créditos representan el 60.9 por ciento del total de activos
+
+![Dashboard](tableau/ESF.svg)
+
+![Dashboa](tableau/ER.svg)
+
+
+
+
+
+
+
+
 ## Data Sources and Methodology
 
 ### Primary Data Sources
