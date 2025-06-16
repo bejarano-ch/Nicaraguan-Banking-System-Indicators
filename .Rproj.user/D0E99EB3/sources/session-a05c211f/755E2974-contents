@@ -1,0 +1,114 @@
+---
+title: "Nicaraguan Banking System Indicators (NBSI)"
+author: "Christian Bejarano"
+format: html
+editor: visual
+---
+
+# Project Overview
+
+Nicaragua is a small open economy in Central America. Its banking sector is also small and shallow, yet it ranks among the most profitable in the region. This project aims to provide a detailed characterization of Nicaragua’s banking system, using publicly available data. It leverages the R programming language for data processing and Tableau for interactive data visualization.
+
+The associated GitHub repository includes the following components::
+
+-   R script for downloading and preprocessing banking data from SIBOIF. — [[code]](https://github.com/bejarano-ch/Nicaraguan-Banking-System-Indicators/blob/main/codes/download_data_SIBOIF.R)
+-   R script for downloading official exchange-rate data from the BCN. — [[code]](https://github.com/bejarano-ch/Nicaraguan-Banking-System-Indicators/blob/main/codes/download_exchange_rate.R)
+-   Interactive Tableau dashboards:
+    -   Statement of Financial Position — [\[landscape\]](https://public.tableau.com/app/profile/christian.bejarano5490/viz/StatementofFinancialPosition/Landscape) [\[portrait\]](https://public.tableau.com/app/profile/christian.bejarano5490/viz/StatementofFinancialPosition/Portrait)
+    -   Income Statement — [\[landscape\]](https://public.tableau.com/app/profile/christian.bejarano5490/viz/IncomeStatement_17496622854550/Landscape) [\[portrait\]](https://public.tableau.com/app/profile/christian.bejarano5490/viz/IncomeStatement_17496622854550/Portrait)
+
+## Description of the data
+
+The information is primarily sourced from the Superintendency of Banks and Other Financial Institutions (SIBOIF), through the JSON API provided by the institution. The analysis covers the period from January 2019 to the most recent available data and includes disaggregated financial position and income statement data for all supervised institutions. The objective is to expand this repository by integrating additional information from other reports, such as financial indicators and system stratifications.
+
+## Key Insights as of May 2025
+
+### Assets
+
+-   The Nicaraguan banking system holds USD 9,851.7 million in total assets—roughly 50 percent of the country’s 2024 GDP—and remains a traditional model, with its loan portfolio accounting for 61.2 percent of those assets.
+-   The banking loan portfolio has recorded accelerated growth since 2022, reaching its highest year-on-year growth rate in February 2025 at 20.6 percent. As of May 2025, the loan balance stands at USD 6,034.1 million.
+-   The credit market is dominated by three institutions—BANPRO, BAC, and LAFISE—which together account for 80 percent of the system’s total loan portfolio balance.
+
+### Liabilities and equity
+
+-   Total liabilities of the system amount to USD 8,111.1 million. The main source of funding for the banking system is public deposits, which totaled USD 7,004.6 million (86.4 percent of total liabilities) and have registered double-digit year-on-year growth rates since 2020.
+-   The sustained growth of public deposits has allowed the banking system to reduce its indebtedness to other financial institutions and expand its credit and investment operations.
+-   Equity stands at USD 1,740.6 million, implying an asset-to-equity ratio of 5.65 times. Equity has recorded sustained year-on-year growth of around 10 percent, driven by increasing profitability.
+
+:::: html
+::: {#viz1749781140854 .tableauPlaceholder style="position: relative"}
+<noscript><a href='#'><img src="https://public.tableau.com/static/images/M6/M6FM7XSSX/1_rss.png" alt="Portrait " style="border: none"/></a></noscript>
+
+<object class="tableauViz" style="display:none;">
+
+<param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' /> <param name='embed_code_version' value='3' /> <param name='path' value='shared&#47;M6FM7XSSX' /> <param name='toolbar' value='yes' /><param name='static_image' value='https://public.tableau.com/static/images/M6/M6FM7XSSX/1.png' /> <param name='animate_transition' value='yes' /><param name='display_static_image' value='yes' /><param name='display_spinner' value='yes' /><param name='display_overlay' value='yes' /><param name='display_count' value='yes' /><param name='language' value='es-ES' /><param name='filter' value='publish=yes' />
+
+</object>
+:::
+
+```{=html}
+<script type='text/javascript'>
+  var divElement = document.getElementById('viz1749781140854');
+  var vizElement = divElement.getElementsByTagName('object')[0];
+  if ( divElement.offsetWidth > 800 ) { 
+    vizElement.style.width='800px';
+    vizElement.style.height='1227px';
+  } else if ( divElement.offsetWidth > 500 ) { 
+    vizElement.style.width='800px';
+    vizElement.style.height='1227px';
+  } else { 
+    vizElement.style.width='100%';
+    vizElement.style.height='1427px';
+  }
+  var scriptElement = document.createElement('script');
+  scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+  vizElement.parentNode.insertBefore(scriptElement, vizElement);
+</script>
+```
+::::
+
+### Income statement and profitability
+
+-   The banking system's annual profit stood at US\$222.2 million, increasing 22.3 percent over the previous year and resulting in a return on assets of 2.4 percent.
+
+-   This is the result of higher financial income associated with the accelerated growth of the loan portfolio. Likewise, financial expenses have remained stable as a result of the growth of public deposits, which constitute a cheaper source of funding in contrast to financing with financial institutions. In addition, administrative and financial asset impairment expenses have registered lower growth in contrast to total revenues, reflecting prudent and efficient resource management.
+
+-   Finally, the largest institutions are those with the highest profitability, as a result of lower financial expenses. [Bejarano (2024)](https://www.bcn.gob.ni/system/files_force/documentos/Documento%20de%20Trabajo%20No%20098.pdf?download=1) presents evidence in favor of the hypothesis that the price elasticity of deposit supply is low, and that depositors prioritize factors such as liquidity over interest rates. Since larger institutions have more infrastructure (e.g., ATMs or branches), they may attract more depositors, even if they offer them a lower interest rate.
+
+    :::: html
+    ::: {#viz1750032345994 .tableauPlaceholder style="position: relative"}
+    <noscript><a href='#'><img src="https://public.tableau.com/static/images/7H/7HMPMHJSY/1_rss.png" alt="Portrait " style="border: none"/></a></noscript>
+
+    <object class="tableauViz" style="display:none;">
+
+    <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' /> <param name='embed_code_version' value='3' /> <param name='path' value='shared&#47;7HMPMHJSY' /> <param name='toolbar' value='yes' /> <param name='static_image' value='https://public.tableau.com/static/images/7H/7HMPMHJSY/1.png' /> <param name='animate_transition' value='yes' /> <param name='display_static_image' value='yes' /> <param name='display_spinner' value='yes' /> <param name='display_overlay' value='yes' /> <param name='display_count' value='yes' /> <param name='language' value='en-US' />
+
+    </object>
+    :::
+
+    ```{=html}
+    <script type='text/javascript'>
+      var divElement = document.getElementById('viz1750032345994');
+      var vizElement = divElement.getElementsByTagName('object')[0];
+      if ( divElement.offsetWidth > 800 ) { 
+        vizElement.style.width='800px';
+        vizElement.style.height='1127px';
+      } else if ( divElement.offsetWidth > 500 ) { 
+        vizElement.style.width='800px';
+        vizElement.style.height='1127px';
+      } else { 
+        vizElement.style.width='100%';
+        vizElement.style.height='1727px';
+      }
+      var scriptElement = document.createElement('script');
+      scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+      vizElement.parentNode.insertBefore(scriptElement, vizElement);
+    </script>
+    ```
+    ::::
+
+## Contact
+
+**Christian Bejarano**\
+📧 [christian.bejarano.ch\@gmail.com](mailto:christian.bejarano.ch@gmail.com)\
+🔗 [GitHub Repository](https://github.com/bejarano-ch/Nicaraguan-Banking-System-Indicators)

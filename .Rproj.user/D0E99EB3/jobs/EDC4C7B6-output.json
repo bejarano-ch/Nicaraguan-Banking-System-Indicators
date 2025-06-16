@@ -1,0 +1,5 @@
+[1,"==> quarto preview README.qmd --to default --no-watch-inputs --no-browse\n\n"]
+[1,"pandoc \n  to: html\n  output-file: README.html\n  standalone: true\n  section-divs: true\n  html-math-method: mathjax\n  wrap: none\n  default-image-extension: png\n  \nmetadata\n  document-css: false\n  link-citations: true\n  date-format: long\n  lang: en\n  title: Nicaraguan Banking System Indicators (NBSI)\n  \n"]
+[1,"Output created: README.html\n\nWatching files for changes\nBrowse at http://localhost:3829/\n"]
+[1,"pandoc \n  to: html\n  output-file: README.html\n  standalone: true\n  section-divs: true\n  html-math-method: mathjax\n  wrap: none\n  default-image-extension: png\n  \nmetadata\n  document-css: false\n  link-citations: true\n  date-format: long\n  lang: en\n  title: Nicaraguan Banking System Indicators (NBSI)\n  \n"]
+[1,"Output created: README.html\n\nWatching files for changes\n"]

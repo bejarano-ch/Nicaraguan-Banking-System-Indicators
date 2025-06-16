@@ -1,0 +1,4 @@
+[1,"==> quarto preview index.qmd --to html --no-watch-inputs --no-browse\n\n"]
+[1,"pandoc \n  to: html\n  output-file: index.html\n  standalone: true\n  section-divs: true\n  html-math-method: mathjax\n  wrap: none\n  default-image-extension: png\n  variables: {}\n  \nmetadata\n  document-css: false\n  link-citations: true\n  date-format: long\n  lang: en\n  title: Nicaraguan Banking System Indicators (NBSI)\n  author: Christian Bejarano\n  editor: visual\n  \n"]
+[1,"Output created: index.html\n\nWatching files for changes\n"]
+[1,"Browse at http://localhost:6255/\n"]
